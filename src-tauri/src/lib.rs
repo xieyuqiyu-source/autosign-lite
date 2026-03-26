@@ -1,12 +1,15 @@
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::fs;
 use std::fmt::Write as _;
+use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 const LOGIN_URL: &str = "https://jiegehao.cn/api/policy/password";
+const CAPTCHA_URL: &str = "https://jiegehao.cn/api/captcha";
+const PHONE_CODE_URL: &str = "https://jiegehao.cn/api/policy/code";
+const PHONE_LOGIN_URL: &str = "https://jiegehao.cn/api/policy/identity";
 const PIT_URL: &str = "https://jiegehao.cn/api/lease/pit";
 const GPT_CODE_URL: &str = "https://jiegehao.cn/api/lease/gpt/code";
 
@@ -14,6 +17,8 @@ const GPT_CODE_URL: &str = "https://jiegehao.cn/api/lease/gpt/code";
 struct AccountRecord {
     account: String,
     password: String,
+    #[serde(default = "default_login_type")]
+    login_type: String,
     #[serde(default)]
     last_login: String,
     #[serde(default)]
@@ -28,8 +33,17 @@ struct AccountStore {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct LoginResult {
-    email: String,
+    account: String,
+    login_type: String,
     token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CaptchaResult {
+    captcha_id: String,
+    pic_path: String,
+    captcha_length: i64,
+    open_captcha: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,6 +60,10 @@ struct PitRecord {
     start_at: String,
     expire: String,
     status: i64,
+}
+
+fn default_login_type() -> String {
+    String::from("password")
 }
 
 fn now_text() -> String {
@@ -87,6 +105,39 @@ fn sort_accounts(accounts: &mut [AccountRecord]) {
     accounts.sort_by(|a, b| b.last_login.cmp(&a.last_login));
 }
 
+fn upsert_account(
+    store: &mut AccountStore,
+    account: String,
+    password: String,
+    login_type: String,
+    token: String,
+    update_last_login: bool,
+) {
+    match store.accounts.iter_mut().find(|item| item.account == account) {
+        Some(item) => {
+            item.password = password;
+            item.login_type = login_type;
+            if !token.is_empty() {
+                item.token = token;
+            }
+            if update_last_login {
+                item.last_login = now_text();
+            }
+        }
+        None => store.accounts.push(AccountRecord {
+            account,
+            password,
+            login_type,
+            token,
+            last_login: if update_last_login {
+                now_text()
+            } else {
+                String::new()
+            },
+        }),
+    }
+}
+
 fn csv_escape(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))
 }
@@ -99,18 +150,21 @@ fn load_accounts(app: AppHandle) -> Result<Vec<AccountRecord>, String> {
 }
 
 #[tauri::command]
-fn save_account(app: AppHandle, account: String, password: String) -> Result<(), String> {
+fn save_account(
+    app: AppHandle,
+    account: String,
+    password: String,
+    login_type: Option<String>,
+) -> Result<(), String> {
     let mut store = load_store(&app)?;
-
-    match store.accounts.iter_mut().find(|item| item.account == account) {
-        Some(item) => item.password = password,
-        None => store.accounts.push(AccountRecord {
-            account,
-            password,
-            last_login: String::new(),
-            token: String::new(),
-        }),
-    }
+    upsert_account(
+        &mut store,
+        account,
+        password,
+        login_type.unwrap_or_else(default_login_type),
+        String::new(),
+        false,
+    );
 
     sort_accounts(&mut store.accounts);
     save_store(&app, &store)
@@ -156,23 +210,168 @@ async fn login(app: AppHandle, account: String, password: String) -> Result<Logi
         .to_string();
 
     let mut store = load_store(&app)?;
-    match store.accounts.iter_mut().find(|item| item.account == account) {
-        Some(item) => {
-            item.password = password.clone();
-            item.token = token.clone();
-            item.last_login = now_text();
-        }
-        None => store.accounts.push(AccountRecord {
-            account: account.clone(),
-            password: password.clone(),
-            token: token.clone(),
-            last_login: now_text(),
-        }),
-    }
+    upsert_account(
+        &mut store,
+        account.clone(),
+        password.clone(),
+        String::from("password"),
+        token.clone(),
+        true,
+    );
     sort_accounts(&mut store.accounts);
     save_store(&app, &store)?;
 
-    Ok(LoginResult { email, token })
+    Ok(LoginResult {
+        account: email,
+        login_type: String::from("password"),
+        token,
+    })
+}
+
+#[tauri::command]
+async fn fetch_phone_captcha() -> Result<CaptchaResult, String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(CAPTCHA_URL)
+        .send()
+        .await
+        .map_err(|e| format!("图形验证码请求失败: {e}"))?;
+
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("图形验证码响应解析失败: {e}"))?;
+
+    if body.get("code").and_then(Value::as_i64).unwrap_or(-1) != 0 {
+        return Err(
+            body.get("msg")
+                .and_then(Value::as_str)
+                .unwrap_or("图形验证码获取失败")
+                .to_string(),
+        );
+    }
+
+    let data = body
+        .get("data")
+        .cloned()
+        .ok_or_else(|| String::from("图形验证码返回缺少 data"))?;
+
+    let captcha_id = data
+        .get("captchaId")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let pic_path = data
+        .get("picPath")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let captcha_length = data
+        .get("captchaLength")
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let open_captcha = data
+        .get("openCaptcha")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    Ok(CaptchaResult {
+        captcha_id,
+        pic_path,
+        captcha_length,
+        open_captcha,
+    })
+}
+
+#[tauri::command]
+async fn request_phone_code(phone: String, captcha: String, captcha_id: String) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .post(PHONE_CODE_URL)
+        .header(CONTENT_TYPE, "application/json")
+        .json(&json!({
+            "phone": phone,
+            "bi": 1,
+            "captcha": captcha,
+            "captchaId": captcha_id
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("短信验证码请求失败: {e}"))?;
+
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("短信验证码响应解析失败: {e}"))?;
+
+    if body.get("code").and_then(Value::as_i64).unwrap_or(-1) != 0 {
+        return Err(
+            body.get("msg")
+                .and_then(Value::as_str)
+                .unwrap_or("短信验证码获取失败")
+                .to_string(),
+        );
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn login_by_phone(app: AppHandle, phone: String, code: String) -> Result<LoginResult, String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .post(PHONE_LOGIN_URL)
+        .header(CONTENT_TYPE, "application/json")
+        .json(&json!({ "phone": phone, "code": code }))
+        .send()
+        .await
+        .map_err(|e| format!("手机号登录请求失败: {e}"))?;
+
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("手机号登录响应解析失败: {e}"))?;
+
+    if body.get("code").and_then(Value::as_i64).unwrap_or(-1) != 0 {
+        return Err(
+            body.get("msg")
+                .and_then(Value::as_str)
+                .unwrap_or("手机号登录失败")
+                .to_string(),
+        );
+    }
+
+    let data = body
+        .get("data")
+        .ok_or_else(|| String::from("手机号登录返回缺少 data"))?;
+    let token = data
+        .get("token")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let account = data
+        .get("phone")
+        .and_then(Value::as_str)
+        .unwrap_or(&phone)
+        .to_string();
+
+    let mut store = load_store(&app)?;
+    upsert_account(
+        &mut store,
+        account.clone(),
+        String::new(),
+        String::from("phone"),
+        token.clone(),
+        true,
+    );
+    sort_accounts(&mut store.accounts);
+    save_store(&app, &store)?;
+
+    Ok(LoginResult {
+        account,
+        login_type: String::from("phone"),
+        token,
+    })
 }
 
 #[tauri::command]
@@ -260,13 +459,14 @@ fn export_accounts(app: AppHandle) -> Result<String, String> {
     let file_name = format!("autosign_accounts_{}.csv", now_text());
     let path = base_dir.join(file_name);
 
-    let mut csv = String::from("account,password,last_login,token\n");
+    let mut csv = String::from("account,password,login_type,last_login,token\n");
     for item in store.accounts {
         let _ = writeln!(
             csv,
-            "{},{},{},{}",
+            "{},{},{},{},{}",
             csv_escape(&item.account),
             csv_escape(&item.password),
+            csv_escape(&item.login_type),
             csv_escape(&item.last_login),
             csv_escape(&item.token),
         );
@@ -283,6 +483,9 @@ pub fn run() {
             load_accounts,
             save_account,
             login,
+            fetch_phone_captcha,
+            request_phone_code,
+            login_by_phone,
             fetch_pits,
             fetch_verification_code,
             export_accounts
