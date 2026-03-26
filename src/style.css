@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-width: 1180px;
+}
+
+code {
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace;
+}
+
+.pit-shell {
+  min-height: 0;
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+  <ellipse cx="256" cy="170" rx="132" ry="70" fill="#eff6ff" opacity="0.95"/>
+  <ellipse cx="256" cy="256" rx="168" ry="84" fill="#dbeafe" opacity="0.95"/>
+  <ellipse cx="256" cy="342" rx="132" ry="70" fill="#bfdbfe" opacity="0.95"/>
+  <text x="256" y="292" text-anchor="middle" font-size="122" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" fill="#0f172a">AS</text>
+</svg>
