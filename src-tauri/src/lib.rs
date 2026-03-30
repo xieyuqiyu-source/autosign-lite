@@ -11,6 +11,7 @@ const CAPTCHA_URL: &str = "https://jiegehao.cn/api/captcha";
 const PHONE_CODE_URL: &str = "https://jiegehao.cn/api/policy/code";
 const PHONE_LOGIN_URL: &str = "https://jiegehao.cn/api/policy/identity";
 const PIT_URL: &str = "https://jiegehao.cn/api/lease/pit";
+const RENT_URL: &str = "https://jiegehao.cn/api/lease/rent";
 const GPT_CODE_URL: &str = "https://jiegehao.cn/api/lease/gpt/code";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -403,6 +404,47 @@ async fn fetch_pits(token: String) -> Result<Vec<PitRecord>, String> {
 }
 
 #[tauri::command]
+async fn rent_chatgpt(token: String) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .post(RENT_URL)
+        .header(AUTHORIZATION, format!("Bearer {token}"))
+        .header(CONTENT_TYPE, "application/json")
+        .json(&json!({
+            "platform_id": 3,
+            "duration": 3,
+            "cost_points": 180
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("租借请求失败: {e}"))?;
+
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("租借响应解析失败: {e}"))?;
+
+    if body.get("code").and_then(Value::as_i64).unwrap_or(-1) != 0 {
+        let msg = body
+            .get("msg")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+
+        if msg.contains("已租借") || msg.contains("无空") {
+            return Err(String::from("已租借或无空栏位"));
+        }
+
+        return Err(if msg.is_empty() {
+            String::from("已租借或无空栏位")
+        } else {
+            msg.to_string()
+        });
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 async fn fetch_verification_code(
     token: String,
     user_name: String,
@@ -487,6 +529,7 @@ pub fn run() {
             request_phone_code,
             login_by_phone,
             fetch_pits,
+            rent_chatgpt,
             fetch_verification_code,
             export_accounts
         ])

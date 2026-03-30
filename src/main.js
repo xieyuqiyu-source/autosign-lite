@@ -114,8 +114,9 @@ app.innerHTML = `
         </section>
 
         <section class="rounded-box border border-base-300 bg-base-100 p-3 shadow-sm">
-          <div class="mb-3">
+          <div class="mb-3 flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold">三栏位</h2>
+            <button id="rentChatgptButton" class="btn btn-xs btn-primary">借ChatGPT</button>
           </div>
           <div id="pitGrid" class="grid grid-cols-3 gap-3"></div>
         </section>
@@ -144,6 +145,7 @@ const els = {
   clearButton: document.querySelector('#clearButton'),
   copyTokenButton: document.querySelector('#copyTokenButton'),
   exportButton: document.querySelector('#exportButton'),
+  rentChatgptButton: document.querySelector('#rentChatgptButton'),
   accountList: document.querySelector('#accountList'),
   accountCount: document.querySelector('#accountCount'),
   pitGrid: document.querySelector('#pitGrid'),
@@ -198,6 +200,14 @@ function setButtonLoading(button, loading, label) {
   button.innerHTML = loading
     ? `<span class="loading loading-spinner loading-xs"></span>${label}`
     : label
+}
+
+function ensureToken() {
+  if (!state.token) {
+    const current = selectedAccountRecord()
+    state.token = current?.token || ''
+  }
+  return state.token
 }
 
 function setLoginMode(mode) {
@@ -301,6 +311,7 @@ function renderPits() {
               <span class="badge badge-outline badge-sm">0${index + 1}</span>
               <h3 class="text-sm font-semibold">${escapeHtml(item.title || pitTitle(item.pit))}</h3>
               <span class="text-[11px] text-base-content/55">${escapeHtml(pitStatus(item.status))}</span>
+              ${item.name ? `<span class="badge badge-primary badge-sm">${escapeHtml(item.name)}</span>` : ''}
             </div>
 
             <div class="rounded-box bg-base-100 px-2 py-2 text-xs">
@@ -452,11 +463,7 @@ async function requestSmsCode() {
 }
 
 async function fetchPits() {
-  if (!state.token) {
-    const current = selectedAccountRecord()
-    state.token = current?.token || ''
-  }
-  if (!state.token) {
+  if (!ensureToken()) {
     setStatus('缺少 token', '请先登录一个账号。')
     return
   }
@@ -466,6 +473,25 @@ async function fetchPits() {
   state.pits = result.map((item) => ({ ...item, title: pitTitle(item.pit) }))
   renderPits()
   setStatus('pit 已刷新', '已按接口顺序展示三个栏位。')
+}
+
+async function rentChatgpt() {
+  if (!ensureToken()) {
+    setStatus('请先登录', '登录后才可以借 ChatGPT。')
+    return
+  }
+
+  setButtonLoading(els.rentChatgptButton, true, '租借中')
+  try {
+    await invoke('rent_chatgpt', { token: state.token })
+    setStatus('租借成功', '正在刷新栏位。')
+    await fetchPits()
+  } catch (error) {
+    const message = String(error)
+    setStatus('租借失败', message.includes('已租借或无空栏位') ? '已租借或无空栏位' : message)
+  } finally {
+    setButtonLoading(els.rentChatgptButton, false, '借ChatGPT')
+  }
 }
 
 async function fetchCode(index) {
@@ -583,6 +609,10 @@ els.exportButton.addEventListener('click', async () => {
   } catch (error) {
     setStatus('导出失败', String(error))
   }
+})
+
+els.rentChatgptButton.addEventListener('click', async () => {
+  await rentChatgpt()
 })
 
 els.accountList.addEventListener('click', async (event) => {
