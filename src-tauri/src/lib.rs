@@ -172,6 +172,13 @@ fn save_account(
 }
 
 #[tauri::command]
+fn delete_account(app: AppHandle, account: String) -> Result<(), String> {
+    let mut store = load_store(&app)?;
+    store.accounts.retain(|item| item.account != account);
+    save_store(&app, &store)
+}
+
+#[tauri::command]
 async fn login(app: AppHandle, account: String, password: String) -> Result<LoginResult, String> {
     let client = reqwest::Client::new();
     let response = client
@@ -524,6 +531,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_accounts,
             save_account,
+            delete_account,
             login,
             fetch_phone_captcha,
             request_phone_code,

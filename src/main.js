@@ -108,7 +108,7 @@ app.innerHTML = `
               <button id="exportButton" class="btn btn-xs btn-outline">导出</button>
             </div>
           </div>
-          <div id="accountList" class="space-y-2 text-sm">
+          <div id="accountList" class="h-[320px] space-y-2 overflow-y-auto pr-1 text-sm">
             <div class="rounded-box bg-base-200 px-3 py-8 text-center text-base-content/50">暂无已保存账号</div>
           </div>
         </section>
@@ -158,6 +158,9 @@ const state = {
   token: '',
   selectedAccount: '',
   selectedLoginType: 'password',
+  accountOrder: [],
+  usedAccounts: new Set(),
+  accountLeases: {},
   pits: [],
   loadingCodes: {},
   pitCodes: {},
@@ -263,8 +266,97 @@ function selectedAccountRecord() {
   return state.accounts.find((item) => item.account === state.selectedAccount)
 }
 
+function stableAccountOrder(accounts) {
+  const known = new Set(state.accountOrder)
+  const incoming = accounts.map((item) => item.account)
+  const nextOrder = [
+    ...state.accountOrder.filter((account) => incoming.includes(account)),
+    ...incoming.filter((account) => !known.has(account)),
+  ]
+
+  state.accountOrder = nextOrder
+  const indexByAccount = new Map(nextOrder.map((account, index) => [account, index]))
+  return [...accounts].sort((a, b) => {
+    const aIndex = indexByAccount.get(a.account) ?? Number.MAX_SAFE_INTEGER
+    const bIndex = indexByAccount.get(b.account) ?? Number.MAX_SAFE_INTEGER
+    return aIndex - bIndex
+  })
+}
+
+function parseExpireTime(value) {
+  if (!value) return 0
+  if (typeof value === 'number') {
+    return value > 9999999999 ? value : value * 1000
+  }
+
+  const text = String(value).trim()
+  if (!text) return 0
+  if (/^\d+$/.test(text)) {
+    const timestamp = Number(text)
+    return timestamp > 9999999999 ? timestamp : timestamp * 1000
+  }
+
+  const parsed = Date.parse(text)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function formatExpireTime(value) {
+  const time = parseExpireTime(value)
+  if (!time) return ''
+  return new Date(time).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+function accountUsageState(account) {
+  const lease = state.accountLeases[account]
+  const expireTime = parseExpireTime(lease?.expire)
+  if (expireTime) {
+    if (expireTime > Date.now()) {
+      return {
+        className: 'border-success bg-success/5',
+        badge: '已用',
+        badgeClass: 'badge-success',
+        expireText: `到期时间：${formatExpireTime(lease.expire)}`,
+        hint: '',
+      }
+    }
+
+    return {
+      className: 'border-warning bg-warning/5',
+      badge: '已过期',
+      badgeClass: 'badge-warning',
+      expireText: `到期时间：${formatExpireTime(lease.expire)}`,
+      hint: '可重新借',
+    }
+  }
+
+  if (state.usedAccounts.has(account)) {
+    return {
+      className: 'border-success bg-success/5',
+      badge: '已用',
+      badgeClass: 'badge-success',
+      expireText: '',
+      hint: '本轮已载入',
+    }
+  }
+
+  return {
+    className: 'border-base-300',
+    badge: '未用',
+    badgeClass: 'badge-ghost',
+    expireText: '',
+    hint: '',
+  }
+}
+
 function renderAccounts() {
-  els.accountCount.textContent = String(state.accounts.length)
+  const usedCount = state.accounts.filter((item) => accountUsageState(item.account).badge === '已用').length
+  els.accountCount.textContent = usedCount ? `${usedCount}/${state.accounts.length}` : String(state.accounts.length)
   if (!state.accounts.length) {
     els.accountList.innerHTML =
       '<div class="rounded-box bg-base-200 px-3 py-8 text-center text-base-content/50">暂无已保存账号</div>'
@@ -273,8 +365,11 @@ function renderAccounts() {
 
   els.accountList.innerHTML = state.accounts
     .map((item) => {
-      const activeClass = item.account === state.selectedAccount ? 'border-primary bg-primary/5' : 'border-base-300'
-      const lastLogin = item.last_login || '未登录'
+      const isActive = item.account === state.selectedAccount
+      const usage = accountUsageState(item.account)
+      const activeClass = isActive
+        ? 'border-primary bg-primary/5'
+        : usage.className
       const typeLabel = accountTypeLabel(item.login_type)
       return `
         <article class="rounded-box border ${activeClass} px-3 py-2" data-account="${escapeHtml(item.account)}">
@@ -288,8 +383,13 @@ function renderAccounts() {
             <button class="btn btn-xs btn-ghost" data-action="copy-account" data-account="${escapeHtml(item.account)}">复制账号</button>
             <button class="btn btn-xs btn-ghost" data-action="copy-password" data-account="${escapeHtml(item.account)}" ${item.password ? '' : 'disabled'}>复制密码</button>
             <button class="btn btn-xs btn-primary" data-action="load" data-account="${escapeHtml(item.account)}">载入</button>
+            <button class="btn btn-xs btn-ghost text-error" data-action="delete" data-account="${escapeHtml(item.account)}">删除</button>
           </div>
-          <p class="mt-1 text-[11px] text-base-content/45">方式：${escapeHtml(typeLabel)}，最近登录：${escapeHtml(lastLogin)}</p>
+          <div class="mt-1 flex items-center justify-end gap-2 text-[11px] text-base-content/55">
+            ${usage.expireText ? `<span>${escapeHtml(usage.expireText)}</span>` : ''}
+            ${usage.hint ? `<span>${escapeHtml(usage.hint)}</span>` : ''}
+            <span class="badge ${usage.badgeClass} badge-xs">${escapeHtml(usage.badge)}</span>
+          </div>
         </article>
       `
     })
@@ -345,7 +445,7 @@ function renderPits() {
 }
 
 async function refreshAccounts() {
-  state.accounts = await invoke('load_accounts')
+  state.accounts = stableAccountOrder(await invoke('load_accounts'))
   if (!state.selectedAccount && state.accounts.length) {
     state.selectedAccount = state.accounts[0].account
   }
@@ -379,6 +479,30 @@ async function saveCurrentAccount() {
   setStatus('账号已保存')
 }
 
+async function deleteAccount(account) {
+  const confirmed = window.confirm(`确定删除账号“${account}”的本地记录吗？`)
+  if (!confirmed) return
+
+  const deletingSelected = state.selectedAccount === account
+  await invoke('delete_account', { account })
+  state.usedAccounts.delete(account)
+  delete state.accountLeases[account]
+  state.accountOrder = state.accountOrder.filter((item) => item !== account)
+
+  if (deletingSelected) {
+    state.selectedAccount = ''
+    state.token = ''
+    state.pits = []
+    state.pitCodes = {}
+    state.loadingCodes = {}
+    state.accountLeases = {}
+    renderPits()
+  }
+
+  await refreshAccounts()
+  setStatus('账号已删除', account)
+}
+
 async function login(account, password) {
   if (!account || !password) {
     setStatus('账号或密码为空')
@@ -389,6 +513,7 @@ async function login(account, password) {
   const result = await invoke('login', { account, password })
   state.token = result.token
   state.selectedAccount = account
+  state.usedAccounts.add(account)
   state.selectedLoginType = result.login_type || 'password'
   state.pitCodes = {}
   state.loadingCodes = {}
@@ -408,6 +533,7 @@ async function loginByPhone(phone, code) {
   const result = await invoke('login_by_phone', { phone, code })
   state.token = result.token
   state.selectedAccount = result.account || phone
+  state.usedAccounts.add(state.selectedAccount)
   state.selectedLoginType = 'phone'
   state.pitCodes = {}
   state.loadingCodes = {}
@@ -468,10 +594,31 @@ async function fetchPits() {
     return
   }
 
+  const ownerAccount = state.selectedAccount || selectedAccountRecord()?.account || ''
   setStatus('加载 pit...', '正在获取三个栏位信息。')
   const result = await invoke('fetch_pits', { token: state.token })
   state.pits = result.map((item) => ({ ...item, title: pitTitle(item.pit) }))
+
+  if (ownerAccount) {
+    const activePits = state.pits.filter((pit) => pit.account && pit.expire)
+    const latestLease = activePits.reduce((latest, pit) => {
+      if (!latest) return pit
+      return parseExpireTime(pit.expire) > parseExpireTime(latest.expire) ? pit : latest
+    }, null)
+
+    state.usedAccounts.add(ownerAccount)
+    if (latestLease) {
+      state.accountLeases[ownerAccount] = {
+        expire: latestLease.expire,
+        seatId: latestLease.seat_id,
+      }
+    } else {
+      delete state.accountLeases[ownerAccount]
+    }
+  }
+
   renderPits()
+  renderAccounts()
   setStatus('pit 已刷新', '已按接口顺序展示三个栏位。')
 }
 
@@ -533,6 +680,7 @@ function clearInputs() {
   state.token = ''
   state.pits = []
   state.pitCodes = {}
+  state.accountLeases = {}
   state.captchaId = ''
   state.captchaLength = 0
   state.openCaptcha = false
@@ -628,6 +776,7 @@ els.accountList.addEventListener('click', async (event) => {
 
   if (action === 'load') {
     state.selectedAccount = record.account
+    state.usedAccounts.add(record.account)
     setLoginMode(record.login_type || 'password')
     renderAccounts()
 
@@ -647,6 +796,15 @@ els.accountList.addEventListener('click', async (event) => {
       await login(record.account, record.password)
     } catch (error) {
       setStatus('登录失败', String(error))
+    }
+    return
+  }
+
+  if (action === 'delete') {
+    try {
+      await deleteAccount(record.account)
+    } catch (error) {
+      setStatus('删除失败', String(error))
     }
     return
   }
@@ -689,6 +847,12 @@ els.pitGrid.addEventListener('click', async (event) => {
     await copyText(state.pitCodes[index], '验证码已复制')
   }
 })
+
+setInterval(() => {
+  if (state.accounts.length) {
+    renderAccounts()
+  }
+}, 60 * 1000)
 
 async function boot() {
   renderPits()

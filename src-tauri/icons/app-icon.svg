@@ -1,13 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#2563eb"/>
+    <linearGradient id="bg" x1="72" y1="60" x2="442" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="0.52" stop-color="#12385B"/>
+      <stop offset="1" stop-color="#1C6B73"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(394 108) rotate(132.41) scale(280.463 271.078)">
+      <stop stop-color="#7DD3FC" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#7DD3FC" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="card" x1="153" y1="149" x2="358" y2="355" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF8E7"/>
+      <stop offset="1" stop-color="#FFE4A8"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="176" y1="296" x2="352" y2="296" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="slot" x1="135" y1="173" x2="387" y2="350" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#B6F1FF" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#E0FBFF" stop-opacity="0.18"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
-  <ellipse cx="256" cy="170" rx="132" ry="70" fill="#eff6ff" opacity="0.95"/>
-  <ellipse cx="256" cy="256" rx="168" ry="84" fill="#dbeafe" opacity="0.95"/>
-  <ellipse cx="256" cy="342" rx="132" ry="70" fill="#bfdbfe" opacity="0.95"/>
-  <text x="256" y="292" text-anchor="middle" font-size="122" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" fill="#0f172a">AS</text>
+
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="128" fill="url(#glow)"/>
+
+  <g opacity="0.95">
+    <rect x="112" y="138" width="288" height="62" rx="31" fill="url(#slot)"/>
+    <rect x="92" y="225" width="328" height="62" rx="31" fill="url(#slot)"/>
+    <rect x="112" y="312" width="288" height="62" rx="31" fill="url(#slot)"/>
+  </g>
+
+  <g filter="drop-shadow(0 18px 28px rgba(3, 7, 18, 0.28))">
+    <path d="M255.762 112C290.832 112 323.455 129.905 342.259 159.496L372.87 207.657C390.129 234.823 390.129 269.177 372.87 296.343L342.259 344.504C323.455 374.095 290.832 392 255.762 392C220.692 392 188.069 374.095 169.266 344.504L138.654 296.343C121.396 269.177 121.396 234.823 138.654 207.657L169.266 159.496C188.069 129.905 220.692 112 255.762 112Z" fill="url(#card)"/>
+    <path d="M255.762 132C283.913 132 310.105 146.371 325.202 170.127L355.813 218.287C368.885 238.861 368.885 264.839 355.813 285.413L325.202 333.573C310.105 357.329 283.913 371.7 255.762 371.7C227.611 371.7 201.419 357.329 186.322 333.573L155.711 285.413C142.638 264.839 142.638 238.861 155.711 218.287L186.322 170.127C201.419 146.371 227.611 132 255.762 132Z" stroke="#FFF9E9" stroke-opacity="0.55" stroke-width="8"/>
+  </g>
+
+  <path d="M215 314L256.316 189.583C259.789 179.126 274.588 179.126 278.061 189.583L319 314H286.087L277.444 284.292H232.37L223.728 314H215Z" fill="#11263E"/>
+  <path d="M241.528 252.971H268.286L254.907 206.382L241.528 252.971Z" fill="url(#accent)"/>
+  <path d="M185.598 295.523C181.49 291.418 181.49 284.762 185.598 280.656C189.705 276.551 196.365 276.551 200.472 280.656L226.672 306.837L310.73 222.837C314.837 218.732 321.497 218.732 325.604 222.837C329.712 226.942 329.712 233.599 325.604 237.704L234.095 329.163C229.988 333.268 223.328 333.268 219.221 329.163L185.598 295.523Z" fill="url(#accent)"/>
+
+  <circle cx="375" cy="154" r="12" fill="#FDE68A" fill-opacity="0.95"/>
+  <circle cx="399" cy="186" r="8" fill="#67E8F9" fill-opacity="0.9"/>
 </svg>
