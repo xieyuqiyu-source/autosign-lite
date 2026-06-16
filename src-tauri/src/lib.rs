@@ -13,6 +13,7 @@ const PHONE_LOGIN_URL: &str = "https://jiegehao.cn/api/policy/identity";
 const PIT_URL: &str = "https://jiegehao.cn/api/lease/pit";
 const RENT_URL: &str = "https://jiegehao.cn/api/lease/rent";
 const GPT_CODE_URL: &str = "https://jiegehao.cn/api/lease/gpt/code";
+const MEMBER_URL: &str = "https://jiegehao.cn/api/mine/member";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AccountRecord {
@@ -61,6 +62,16 @@ struct PitRecord {
     start_at: String,
     expire: String,
     status: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct MemberInfo {
+    #[serde(default)]
+    expire_at: String,
+    #[serde(default)]
+    days: i64,
+    #[serde(default)]
+    points_avail: i64,
 }
 
 fn default_login_type() -> String {
@@ -411,6 +422,34 @@ async fn fetch_pits(token: String) -> Result<Vec<PitRecord>, String> {
 }
 
 #[tauri::command]
+async fn fetch_member_info(token: String) -> Result<MemberInfo, String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(MEMBER_URL)
+        .header(AUTHORIZATION, format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| format!("会员信息请求失败: {e}"))?;
+
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("会员信息响应解析失败: {e}"))?;
+
+    if body.get("code").and_then(Value::as_i64).unwrap_or(-1) != 0 {
+        return Err(
+            body.get("msg")
+                .and_then(Value::as_str)
+                .unwrap_or("会员信息获取失败")
+                .to_string(),
+        );
+    }
+
+    serde_json::from_value(body.get("data").cloned().unwrap_or_else(|| json!({})))
+        .map_err(|e| format!("会员信息数据解析失败: {e}"))
+}
+
+#[tauri::command]
 async fn rent_chatgpt(token: String) -> Result<(), String> {
     let client = reqwest::Client::new();
     let response = client
@@ -537,6 +576,7 @@ pub fn run() {
             request_phone_code,
             login_by_phone,
             fetch_pits,
+            fetch_member_info,
             rent_chatgpt,
             fetch_verification_code,
             export_accounts

@@ -4,124 +4,76 @@ import { invoke } from '@tauri-apps/api/core'
 const app = document.querySelector('#app')
 
 app.innerHTML = `
-  <div class="app-shell bg-base-200 text-base-content">
-    <div class="mx-auto flex max-w-[1320px] gap-3 p-3">
-      <aside class="w-[388px] shrink-0 rounded-box border border-base-300 bg-base-100 p-3 shadow-sm">
-        <div class="mb-3 flex items-center gap-3">
-          <div class="avatar placeholder">
-            <div class="w-11 rounded-xl bg-neutral text-neutral-content">
-              <span class="text-sm font-bold">AS</span>
-            </div>
-          </div>
-          <div>
-            <p class="text-[11px] uppercase tracking-[0.24em] text-base-content/55">AutoSign Lite</p>
-            <h1 class="text-base font-semibold">账号工具</h1>
-          </div>
-        </div>
-
-        <div class="tabs tabs-boxed mb-3 grid w-full grid-cols-2 bg-base-200 p-1">
-          <button id="passwordTab" class="tab tab-sm tab-active">密码登录</button>
-          <button id="phoneTab" class="tab tab-sm">手机号登录</button>
-        </div>
-
-        <section id="passwordPanel" class="space-y-2">
-          <label class="form-control">
-            <div class="label py-1">
-              <span class="label-text text-xs">账号</span>
-            </div>
-            <input id="accountInput" class="input input-sm input-bordered w-full" placeholder="邮箱或账号" autocomplete="username" />
-          </label>
-
-          <label class="form-control">
-            <div class="label py-1">
-              <span class="label-text text-xs">密码</span>
-            </div>
-            <input id="passwordInput" type="password" class="input input-sm input-bordered w-full" placeholder="密码" autocomplete="current-password" />
-          </label>
-        </section>
-
-        <section id="phonePanel" class="hidden space-y-2">
-          <div class="grid grid-cols-[1fr_116px] gap-2">
-            <div class="space-y-2">
-              <label class="form-control">
-                <div class="label py-1">
-                  <span class="label-text text-xs">手机号</span>
-                </div>
-                <input id="phoneInput" class="input input-sm input-bordered w-full" placeholder="手机号" autocomplete="tel" />
-              </label>
-
-              <label class="form-control">
-                <div class="label py-1">
-                  <span class="label-text text-xs">图形验证码</span>
-                </div>
-                <input id="captchaInput" class="input input-sm input-bordered w-full" placeholder="输入图形验证码" />
-              </label>
-            </div>
-
-            <div class="form-control">
-              <div class="label py-1">
-                <span class="label-text text-xs">验证码图</span>
+  <div class="app-shell bg-base-200 pb-16 text-base-content">
+    <main class="mx-auto flex max-w-[1320px] flex-col gap-3 p-3">
+      <section class="rounded-box border border-base-300 bg-base-100 p-3 shadow-sm">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="avatar placeholder">
+              <div class="w-10 rounded-xl bg-neutral text-neutral-content">
+                <span class="text-sm font-bold">AS</span>
               </div>
-              <button id="refreshCaptchaButton" class="captcha-box btn btn-sm btn-outline overflow-hidden px-0">
-                <img id="captchaImage" class="hidden h-full w-full object-cover" alt="captcha" />
-                <span id="captchaPlaceholder" class="text-[11px] text-base-content/60">获取图片</span>
-              </button>
+            </div>
+            <div>
+              <p class="text-[11px] uppercase tracking-[0.24em] text-base-content/55">AutoSign Lite</p>
+              <h1 class="text-base font-semibold">账号与栏位</h1>
             </div>
           </div>
 
-          <div class="grid grid-cols-[1fr_auto] gap-2">
-            <label class="form-control">
-              <div class="label py-1">
-                <span class="label-text text-xs">短信验证码</span>
-              </div>
-              <input id="smsCodeInput" class="input input-sm input-bordered w-full" placeholder="输入短信验证码" inputmode="numeric" />
-            </label>
-            <div class="flex items-end">
-              <button id="requestSmsButton" class="btn btn-sm btn-outline w-[112px]">获取短信码</button>
-            </div>
-          </div>
-        </section>
-
-        <div class="mt-3 grid grid-cols-2 gap-2">
-          <button id="loginButton" class="btn btn-sm btn-primary">登录</button>
-          <button id="saveButton" class="btn btn-sm btn-outline">保存</button>
-          <button id="refreshPitButton" class="btn btn-sm btn-outline">刷新栏位</button>
-          <button id="clearButton" class="btn btn-sm btn-ghost">清空</button>
-        </div>
-
-        <div class="mt-3 rounded-box bg-base-200 p-3">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-[11px] uppercase tracking-[0.2em] text-base-content/50">Status</span>
-            <button id="copyTokenButton" class="btn btn-ghost btn-xs">复制 Token</button>
-          </div>
-          <p id="statusText" class="mt-2 text-sm font-semibold">等待操作</p>
-          <p id="statusHint" class="mt-1 text-xs text-base-content/60">支持密码登录和手机号验证码登录。</p>
-        </div>
-      </aside>
-
-      <main class="flex min-w-0 flex-1 flex-col gap-3 self-start">
-        <section class="rounded-box border border-base-300 bg-base-100 p-3 shadow-sm">
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <p class="text-sm font-semibold">账号列表</p>
-            <div class="flex items-center gap-2">
-              <span id="accountCount" class="badge badge-neutral badge-sm">0</span>
-              <button id="exportButton" class="btn btn-xs btn-outline">导出</button>
-            </div>
-          </div>
-          <div id="accountList" class="h-[320px] space-y-2 overflow-y-auto pr-1 text-sm">
-            <div class="rounded-box bg-base-200 px-3 py-8 text-center text-base-content/50">暂无已保存账号</div>
-          </div>
-        </section>
-
-        <section class="rounded-box border border-base-300 bg-base-100 p-3 shadow-sm">
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <h2 class="text-sm font-semibold">三栏位</h2>
+          <div class="flex items-center gap-2">
+            <span id="accountCount" class="badge badge-neutral badge-sm">0</span>
+            <button id="exportButton" class="btn btn-xs btn-outline">导出</button>
+            <button id="filterUniqueButton" class="btn btn-xs btn-outline">筛选重复</button>
+            <button id="refreshPitButton" class="btn btn-xs btn-outline">刷新栏位</button>
             <button id="rentChatgptButton" class="btn btn-xs btn-primary">借ChatGPT</button>
           </div>
-          <div id="pitGrid" class="grid grid-cols-3 gap-3"></div>
-        </section>
-      </main>
-    </div>
+        </div>
+
+        <div class="mb-3 rounded-box border border-base-300 bg-base-200/60 p-2">
+          <div class="flex items-center gap-2">
+            <div class="tabs tabs-boxed shrink-0 bg-base-100 p-1">
+              <button id="passwordTab" class="tab tab-sm tab-active">密码登录</button>
+              <button id="phoneTab" class="tab tab-sm">手机号登录</button>
+            </div>
+
+            <section id="passwordPanel" class="grid min-w-0 flex-1 grid-cols-[minmax(180px,1fr)_minmax(160px,0.8fr)] gap-2">
+              <input id="accountInput" class="input input-sm input-bordered w-full" placeholder="账号 / 邮箱" autocomplete="username" />
+              <input id="passwordInput" type="password" class="input input-sm input-bordered w-full" placeholder="密码" autocomplete="current-password" />
+            </section>
+
+            <section id="phonePanel" class="hidden min-w-0 flex-1 grid-cols-[minmax(140px,0.8fr)_112px_minmax(120px,0.7fr)_112px_minmax(120px,0.7fr)] gap-2">
+              <input id="phoneInput" class="input input-sm input-bordered w-full" placeholder="手机号" autocomplete="tel" />
+              <button id="refreshCaptchaButton" class="captcha-box btn btn-sm btn-outline overflow-hidden px-0">
+                <img id="captchaImage" class="hidden h-full w-full object-cover" alt="captcha" />
+                <span id="captchaPlaceholder" class="text-[11px] text-base-content/60">验证码图</span>
+              </button>
+              <input id="captchaInput" class="input input-sm input-bordered w-full" placeholder="图形验证码" />
+              <button id="requestSmsButton" class="btn btn-sm btn-outline">获取短信码</button>
+              <input id="smsCodeInput" class="input input-sm input-bordered w-full" placeholder="短信验证码" inputmode="numeric" />
+            </section>
+
+            <div class="grid shrink-0 grid-cols-4 gap-2">
+              <button id="loginButton" class="btn btn-sm btn-primary">登录</button>
+              <button id="saveButton" class="btn btn-sm btn-outline">保存</button>
+              <button id="clearButton" class="btn btn-sm btn-ghost">清空</button>
+              <button id="copyTokenButton" class="btn btn-sm btn-ghost">Token</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="accountList" class="h-[620px] space-y-2 overflow-y-auto pr-1 text-sm">
+          <div class="rounded-box bg-base-200 px-3 py-8 text-center text-base-content/50">暂无已保存账号</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="fixed inset-x-0 bottom-0 z-10 border-t border-base-300 bg-base-100/95 px-3 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div class="mx-auto flex max-w-[1320px] items-center gap-3">
+        <span class="badge badge-neutral badge-sm">Status</span>
+        <p id="statusText" class="text-sm font-semibold">等待操作</p>
+        <p id="statusHint" class="min-w-0 flex-1 truncate text-xs text-base-content/60">支持密码登录和手机号验证码登录。</p>
+      </div>
+    </footer>
   </div>
 `
 
@@ -145,10 +97,10 @@ const els = {
   clearButton: document.querySelector('#clearButton'),
   copyTokenButton: document.querySelector('#copyTokenButton'),
   exportButton: document.querySelector('#exportButton'),
+  filterUniqueButton: document.querySelector('#filterUniqueButton'),
   rentChatgptButton: document.querySelector('#rentChatgptButton'),
   accountList: document.querySelector('#accountList'),
   accountCount: document.querySelector('#accountCount'),
-  pitGrid: document.querySelector('#pitGrid'),
   statusText: document.querySelector('#statusText'),
   statusHint: document.querySelector('#statusHint'),
 }
@@ -161,6 +113,10 @@ const state = {
   accountOrder: [],
   usedAccounts: new Set(),
   accountLeases: {},
+  accountPits: {},
+  accountMembers: {},
+  expandedAccount: '',
+  showUniquePits: false,
   pits: [],
   loadingCodes: {},
   pitCodes: {},
@@ -220,6 +176,7 @@ function setLoginMode(mode) {
   els.phoneTab.classList.toggle('tab-active', !passwordMode)
   els.passwordPanel.classList.toggle('hidden', !passwordMode)
   els.phonePanel.classList.toggle('hidden', passwordMode)
+  els.phonePanel.classList.toggle('grid', !passwordMode)
 }
 
 function applyCaptcha(data) {
@@ -312,6 +269,21 @@ function formatExpireTime(value) {
   })
 }
 
+function formatExpireCountdown(value) {
+  const time = parseExpireTime(value)
+  if (!time) return ''
+
+  const diffSeconds = Math.max(0, Math.floor((time - Date.now()) / 1000))
+  if (diffSeconds <= 0) return '已过期'
+
+  const days = Math.floor(diffSeconds / 86400)
+  const hours = Math.floor((diffSeconds % 86400) / 3600)
+  const minutes = Math.floor((diffSeconds % 3600) / 60)
+  const seconds = diffSeconds % 60
+
+  return `还剩 ${days}天 ${hours}小时 ${minutes}分 ${seconds}秒`
+}
+
 function accountUsageState(account) {
   const lease = state.accountLeases[account]
   const expireTime = parseExpireTime(lease?.expire)
@@ -321,7 +293,8 @@ function accountUsageState(account) {
         className: 'border-success bg-success/5',
         badge: '已用',
         badgeClass: 'badge-success',
-        expireText: `到期时间：${formatExpireTime(lease.expire)}`,
+        expireText: `栏位${formatExpireCountdown(lease.expire)}`,
+        expireClass: 'badge-success',
         hint: '',
       }
     }
@@ -330,7 +303,8 @@ function accountUsageState(account) {
       className: 'border-warning bg-warning/5',
       badge: '已过期',
       badgeClass: 'badge-warning',
-      expireText: `到期时间：${formatExpireTime(lease.expire)}`,
+      expireText: `栏位到期：${formatExpireTime(lease.expire)}`,
+      expireClass: 'badge-warning',
       hint: '可重新借',
     }
   }
@@ -341,6 +315,7 @@ function accountUsageState(account) {
       badge: '已用',
       badgeClass: 'badge-success',
       expireText: '',
+      expireClass: '',
       hint: '本轮已载入',
     }
   }
@@ -350,8 +325,140 @@ function accountUsageState(account) {
     badge: '未用',
     badgeClass: 'badge-ghost',
     expireText: '',
+    expireClass: '',
     hint: '',
   }
+}
+
+function renderInlinePitSummary(account, pits) {
+  if (!pits.length) return ''
+
+  const firstPit = pits[0]
+  const key = `${account}:0`
+  const firstCode = state.pitCodes[key] || ''
+  const loading = Boolean(state.loadingCodes[key])
+  const available = Boolean(firstPit.account && firstPit.seat_id)
+
+  return `
+    <span class="inline-flex min-w-0 items-center gap-1 rounded-full bg-base-200 px-2 py-1">
+      <span class="shrink-0 cursor-pointer text-base-content/55" data-action="toggle-pits" data-account="${escapeHtml(account)}">栏位</span>
+      <span class="badge badge-outline badge-xs shrink-0">${escapeHtml(firstPit.name || firstPit.title || pitTitle(firstPit.pit))}</span>
+      <code class="max-w-[180px] cursor-pointer truncate rounded bg-warning/20 px-1.5 py-0.5 font-semibold text-warning-content" data-action="copy-account-pit" data-account="${escapeHtml(account)}" data-index="0">${escapeHtml(firstPit.account || '-')}</code>
+      <code class="max-w-[180px] cursor-pointer truncate rounded bg-info/15 px-1.5 py-0.5 font-semibold text-info-content" data-action="copy-password-pit" data-account="${escapeHtml(account)}" data-index="0">${escapeHtml(firstPit.password || '-')}</code>
+      <button class="btn btn-ghost btn-xs h-5 min-h-5 shrink-0 px-1.5" data-action="fetch-account-code" data-account="${escapeHtml(account)}" data-index="0" ${available ? '' : 'disabled'}>
+        ${loading ? '<span class="loading loading-spinner loading-xs"></span>获取中' : (firstCode ? `验证码：${escapeHtml(firstCode)}` : '验证码')}
+      </button>
+    </span>
+  `
+}
+
+function renderAccountPitDetails(account, pits, expanded) {
+  if (!pits.length || !expanded) return ''
+
+  const details = pits
+    .map((pit, index) => {
+      const key = `${account}:${index}`
+      const code = state.pitCodes[key] || ''
+      const loading = Boolean(state.loadingCodes[key])
+      const available = Boolean(pit.account && pit.seat_id)
+      return `
+        <div class="grid grid-cols-[90px_minmax(0,1fr)_minmax(0,1fr)_74px] items-center gap-2 rounded-box bg-base-100 px-2 py-2 text-xs">
+          <span class="badge badge-outline badge-sm">${escapeHtml(pit.name || pit.title || pitTitle(pit.pit))}</span>
+          <code class="cursor-pointer truncate rounded bg-base-200 px-2 py-1" data-action="copy-account-pit" data-account="${escapeHtml(account)}" data-index="${index}">${escapeHtml(pit.account || '-')}</code>
+          <code class="cursor-pointer truncate rounded bg-base-200 px-2 py-1" data-action="copy-password-pit" data-account="${escapeHtml(account)}" data-index="${index}">${escapeHtml(pit.password || '-')}</code>
+          <button class="btn btn-xs btn-outline" data-action="fetch-account-code" data-account="${escapeHtml(account)}" data-index="${index}" data-no-expand="true" ${available ? '' : 'disabled'}>
+            ${loading ? '<span class="loading loading-spinner loading-xs"></span>获取中' : (code ? escapeHtml(code) : '验证码')}
+          </button>
+        </div>
+      `
+    })
+    .join('')
+
+  return `<div class="mt-2 space-y-2">${details}</div>`
+}
+
+function uniquePitAccounts() {
+  const unique = new Map()
+
+  Object.entries(state.accountPits).forEach(([ownerAccount, pits]) => {
+    pits.forEach((pit) => {
+      const pitAccount = String(pit.account || '').trim()
+      if (!pitAccount) return
+
+      const existing = unique.get(pitAccount)
+      if (existing) {
+        existing.count += 1
+        existing.owners.add(ownerAccount)
+        return
+      }
+
+      unique.set(pitAccount, {
+        account: pitAccount,
+        name: pit.name || pit.title || pitTitle(pit.pit),
+        owners: new Set([ownerAccount]),
+        count: 1,
+      })
+    })
+  })
+
+  return [...unique.values()].map((item) => ({
+    ...item,
+    owners: [...item.owners],
+  }))
+}
+
+function renderUniquePitAccounts() {
+  if (!state.showUniquePits) return ''
+
+  const items = uniquePitAccounts()
+  const total = Object.values(state.accountPits)
+    .flat()
+    .filter((pit) => String(pit.account || '').trim())
+    .length
+  const duplicateCount = Math.max(total - items.length, 0)
+
+  if (!items.length) {
+    return `
+      <section class="sticky bottom-0 rounded-box border border-warning/30 bg-warning/10 p-3 text-xs text-warning-content shadow-sm">
+        暂无可筛选的栏位账号。先载入账号并刷新栏位后再筛选。
+      </section>
+    `
+  }
+
+  return `
+    <section class="sticky bottom-0 rounded-box border border-warning/40 bg-warning/10 p-3 shadow-sm backdrop-blur">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="badge badge-warning badge-sm">去重栏位账号</span>
+          <span class="text-xs text-warning-content/75">不同 ${items.length} 个，已筛掉重复 ${duplicateCount} 个</span>
+        </div>
+        <button class="btn btn-ghost btn-xs text-warning-content" data-action="hide-unique-pits">收起</button>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        ${items.map((item) => `
+          <button class="btn btn-xs h-auto min-h-0 max-w-[260px] border-warning/50 bg-warning/20 px-2 py-1 text-warning-content hover:bg-warning/30" data-action="copy-unique-pit" data-value="${escapeHtml(item.account)}" title="${escapeHtml(item.account)}">
+            <span class="truncate font-semibold">${escapeHtml(item.account)}</span>
+            <span class="badge badge-outline badge-xs shrink-0">${escapeHtml(item.name)}</span>
+            ${item.count > 1 ? `<span class="badge badge-warning badge-xs shrink-0">x${item.count}</span>` : ''}
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `
+}
+
+function renderMemberTags(account) {
+  const member = state.accountMembers[account]
+  if (!member) return ''
+
+  const days = Number(member.days || 0)
+  const points = Number(member.points_avail || 0)
+  const daysClass = days > 0 ? 'badge-success' : 'badge-warning'
+
+  return `
+    <span class="badge ${daysClass} badge-xs shrink-0">剩余 ${escapeHtml(days)} 天</span>
+    <span class="badge badge-info badge-xs shrink-0">积分 ${escapeHtml(points)}</span>
+  `
 }
 
 function renderAccounts() {
@@ -363,85 +470,49 @@ function renderAccounts() {
     return
   }
 
-  els.accountList.innerHTML = state.accounts
+  const accountCards = state.accounts
     .map((item) => {
       const isActive = item.account === state.selectedAccount
+      const expanded = state.expandedAccount === item.account
+      const pits = state.accountPits[item.account] || []
       const usage = accountUsageState(item.account)
       const activeClass = isActive
         ? 'border-primary bg-primary/5'
         : usage.className
       const typeLabel = accountTypeLabel(item.login_type)
       return `
-        <article class="rounded-box border ${activeClass} px-3 py-2" data-account="${escapeHtml(item.account)}">
+        <article class="rounded-box border ${activeClass} px-3 py-2 transition-colors" data-account="${escapeHtml(item.account)}">
           <div class="flex items-center gap-2">
             <div class="min-w-0 flex-1 rounded-box bg-base-200 px-2 py-2 text-xs">
               <span class="text-base-content/55">${typeLabel}：</span>
               <code class="mr-2 inline bg-transparent px-0 py-0">${escapeHtml(item.account)}</code>
               <span class="text-base-content/55">密码：</span>
               <code class="inline bg-transparent px-0 py-0">${escapeHtml(maskPassword(item.password))}</code>
+              <span class="ml-2 inline-flex items-center gap-1 align-middle">${renderMemberTags(item.account)}</span>
             </div>
             <button class="btn btn-xs btn-ghost" data-action="copy-account" data-account="${escapeHtml(item.account)}">复制账号</button>
             <button class="btn btn-xs btn-ghost" data-action="copy-password" data-account="${escapeHtml(item.account)}" ${item.password ? '' : 'disabled'}>复制密码</button>
             <button class="btn btn-xs btn-primary" data-action="load" data-account="${escapeHtml(item.account)}">载入</button>
             <button class="btn btn-xs btn-ghost text-error" data-action="delete" data-account="${escapeHtml(item.account)}">删除</button>
           </div>
-          <div class="mt-1 flex items-center justify-end gap-2 text-[11px] text-base-content/55">
-            ${usage.expireText ? `<span>${escapeHtml(usage.expireText)}</span>` : ''}
-            ${usage.hint ? `<span>${escapeHtml(usage.hint)}</span>` : ''}
-            <span class="badge ${usage.badgeClass} badge-xs">${escapeHtml(usage.badge)}</span>
+          <div class="mt-1 flex min-w-0 items-center justify-between gap-2 text-[11px] text-base-content/55">
+            <div class="min-w-0 flex-1">${renderInlinePitSummary(item.account, pits)}</div>
+            <div class="flex shrink-0 items-center gap-2">
+              ${usage.expireText ? `<span class="badge ${usage.expireClass} badge-xs px-2 font-semibold">${escapeHtml(usage.expireText)}</span>` : ''}
+              ${usage.hint ? `<span>${escapeHtml(usage.hint)}</span>` : ''}
+              <span class="badge ${usage.badgeClass} badge-xs">${escapeHtml(usage.badge)}</span>
+            </div>
           </div>
+          ${renderAccountPitDetails(item.account, pits, expanded)}
         </article>
       `
     })
     .join('')
+  els.accountList.innerHTML = accountCards + renderUniquePitAccounts()
 }
 
 function renderPits() {
-  const cards = state.pits.length ? state.pits : defaultPits
-
-  els.pitGrid.innerHTML = cards
-    .map((item, index) => {
-      const code = state.pitCodes[index] || ''
-      const loading = Boolean(state.loadingCodes[index])
-      const available = Boolean(item.account && item.seat_id)
-      return `
-        <article class="pit-shell rounded-box border border-base-300 bg-base-200/70 p-3 ${item.pit === 'occupying' ? 'ring-1 ring-primary/25' : ''}">
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-              <span class="badge badge-outline badge-sm">0${index + 1}</span>
-              <h3 class="text-sm font-semibold">${escapeHtml(item.title || pitTitle(item.pit))}</h3>
-              <span class="text-[11px] text-base-content/55">${escapeHtml(pitStatus(item.status))}</span>
-              ${item.name ? `<span class="badge badge-primary badge-sm">${escapeHtml(item.name)}</span>` : ''}
-            </div>
-
-            <div class="rounded-box bg-base-100 px-2 py-2 text-xs">
-              <div class="flex items-center justify-between gap-2">
-                <code class="truncate">${escapeHtml(item.account || '-')}</code>
-                <button class="btn btn-ghost btn-xs" data-pit-copy="account" data-index="${index}" ${available ? '' : 'disabled'}>复制账号</button>
-              </div>
-            </div>
-
-            <div class="rounded-box bg-base-100 px-2 py-2 text-xs">
-              <div class="flex items-center justify-between gap-2">
-                <code class="truncate">${escapeHtml(item.password || '-')}</code>
-                <button class="btn btn-ghost btn-xs" data-pit-copy="password" data-index="${index}" ${available ? '' : 'disabled'}>复制密码</button>
-              </div>
-            </div>
-
-            <div class="rounded-box bg-base-100 px-2 py-2 text-xs">
-              <div class="flex items-center gap-2">
-                <button class="btn btn-xs btn-outline" data-action="fetch-code" data-index="${index}" ${available ? '' : 'disabled'}>
-                  ${loading ? '<span class="loading loading-spinner loading-xs"></span>获取中' : '获取验证码'}
-                </button>
-                <code class="flex-1 truncate">${escapeHtml(code || '-')}</code>
-                <button class="btn btn-ghost btn-xs" data-pit-copy="code" data-index="${index}" ${code ? '' : 'disabled'}>复制</button>
-              </div>
-            </div>
-          </div>
-        </article>
-      `
-    })
-    .join('')
+  renderAccounts()
 }
 
 async function refreshAccounts() {
@@ -479,6 +550,22 @@ async function saveCurrentAccount() {
   setStatus('账号已保存')
 }
 
+async function fetchMemberInfoForAccount(account, token = state.token, silent = false) {
+  if (!account || !token) return null
+
+  try {
+    const member = await invoke('fetch_member_info', { token })
+    state.accountMembers[account] = member
+    renderAccounts()
+    return member
+  } catch (error) {
+    if (!silent) {
+      setStatus('会员信息获取失败', String(error))
+    }
+    return null
+  }
+}
+
 async function deleteAccount(account) {
   const confirmed = window.confirm(`确定删除账号“${account}”的本地记录吗？`)
   if (!confirmed) return
@@ -487,7 +574,12 @@ async function deleteAccount(account) {
   await invoke('delete_account', { account })
   state.usedAccounts.delete(account)
   delete state.accountLeases[account]
+  delete state.accountPits[account]
+  delete state.accountMembers[account]
   state.accountOrder = state.accountOrder.filter((item) => item !== account)
+  if (state.expandedAccount === account) {
+    state.expandedAccount = ''
+  }
 
   if (deletingSelected) {
     state.selectedAccount = ''
@@ -496,6 +588,8 @@ async function deleteAccount(account) {
     state.pitCodes = {}
     state.loadingCodes = {}
     state.accountLeases = {}
+    state.accountPits = {}
+    state.accountMembers = {}
     renderPits()
   }
 
@@ -518,6 +612,7 @@ async function login(account, password) {
   state.pitCodes = {}
   state.loadingCodes = {}
   await refreshAccounts()
+  await fetchMemberInfoForAccount(account, state.token)
   renderAccounts()
   setStatus('登录成功', `当前账号: ${result.account || account}`)
   await fetchPits()
@@ -538,6 +633,7 @@ async function loginByPhone(phone, code) {
   state.pitCodes = {}
   state.loadingCodes = {}
   await refreshAccounts()
+  await fetchMemberInfoForAccount(state.selectedAccount, state.token)
   renderAccounts()
   setStatus('手机号登录成功', `当前账号: ${result.account || phone}`)
   await fetchPits()
@@ -588,6 +684,38 @@ async function requestSmsCode() {
   }
 }
 
+function storeAccountPits(ownerAccount, pits) {
+  if (!ownerAccount) return
+
+  const activePits = pits.filter((pit) => pit.account && pit.expire)
+  const latestLease = activePits.reduce((latest, pit) => {
+    if (!latest) return pit
+    return parseExpireTime(pit.expire) > parseExpireTime(latest.expire) ? pit : latest
+  }, null)
+
+  state.usedAccounts.add(ownerAccount)
+  if (latestLease) {
+    state.accountLeases[ownerAccount] = {
+      expire: latestLease.expire,
+      seatId: latestLease.seat_id,
+    }
+  } else {
+    delete state.accountLeases[ownerAccount]
+  }
+  state.accountPits[ownerAccount] = pits
+}
+
+async function fetchPitsForAccount(ownerAccount, token, updateCurrentPits = false) {
+  const result = await invoke('fetch_pits', { token })
+  const pits = result.map((item) => ({ ...item, title: pitTitle(item.pit) }))
+  storeAccountPits(ownerAccount, pits)
+  if (updateCurrentPits) {
+    state.pits = pits
+  }
+  renderAccounts()
+  return pits
+}
+
 async function fetchPits() {
   if (!ensureToken()) {
     setStatus('缺少 token', '请先登录一个账号。')
@@ -596,30 +724,46 @@ async function fetchPits() {
 
   const ownerAccount = state.selectedAccount || selectedAccountRecord()?.account || ''
   setStatus('加载 pit...', '正在获取三个栏位信息。')
-  const result = await invoke('fetch_pits', { token: state.token })
-  state.pits = result.map((item) => ({ ...item, title: pitTitle(item.pit) }))
+  await fetchPitsForAccount(ownerAccount, state.token, true)
+  setStatus('pit 已刷新', '已按接口顺序展示三个栏位。')
+}
 
-  if (ownerAccount) {
-    const activePits = state.pits.filter((pit) => pit.account && pit.expire)
-    const latestLease = activePits.reduce((latest, pit) => {
-      if (!latest) return pit
-      return parseExpireTime(pit.expire) > parseExpireTime(latest.expire) ? pit : latest
-    }, null)
-
-    state.usedAccounts.add(ownerAccount)
-    if (latestLease) {
-      state.accountLeases[ownerAccount] = {
-        expire: latestLease.expire,
-        seatId: latestLease.seat_id,
-      }
-    } else {
-      delete state.accountLeases[ownerAccount]
-    }
+async function refreshAllAccountPits() {
+  if (!state.accounts.length) {
+    setStatus('暂无账号', '请先保存账号。')
+    return
   }
 
-  renderPits()
-  renderAccounts()
-  setStatus('pit 已刷新', '已按接口顺序展示三个栏位。')
+  const accountsWithToken = state.accounts.filter((item) => item.token)
+  const skipped = state.accounts.length - accountsWithToken.length
+  if (!accountsWithToken.length) {
+    setStatus('缺少 token', '所有账号都需要先登录一次后才能批量刷新。')
+    return
+  }
+
+  let success = 0
+  const failed = []
+  setButtonLoading(els.refreshPitButton, true, '刷新中')
+  try {
+    for (const [index, item] of accountsWithToken.entries()) {
+      setStatus('批量刷新栏位...', `${index + 1}/${accountsWithToken.length}：${item.account}`)
+      try {
+        await fetchPitsForAccount(item.account, item.token, item.account === state.selectedAccount)
+        await fetchMemberInfoForAccount(item.account, item.token, true)
+        success += 1
+      } catch (error) {
+        failed.push(`${item.account}: ${String(error)}`)
+      }
+    }
+
+    const parts = [`成功 ${success} 个`]
+    if (skipped) parts.push(`跳过 ${skipped} 个无 token`)
+    if (failed.length) parts.push(`失败 ${failed.length} 个`)
+    setStatus('批量刷新完成', parts.join('，'))
+  } finally {
+    setButtonLoading(els.refreshPitButton, false, '刷新栏位')
+    renderAccounts()
+  }
 }
 
 async function rentChatgpt() {
@@ -641,28 +785,30 @@ async function rentChatgpt() {
   }
 }
 
-async function fetchCode(index) {
-  const pit = state.pits[index]
+async function fetchAccountPitCode(account, index) {
+  const pit = state.accountPits[account]?.[index]
   if (!pit?.account || !pit?.seat_id) {
     setStatus('该栏位不可获取验证码')
     return
   }
 
-  state.loadingCodes[index] = true
-  renderPits()
+  const key = `${account}:${index}`
+  state.loadingCodes[key] = true
+  renderAccounts()
   try {
+    const record = state.accounts.find((item) => item.account === account)
     const code = await invoke('fetch_verification_code', {
-      token: state.token,
+      token: record?.token || state.token,
       userName: pit.account,
       busSeatId: pit.seat_id,
     })
-    state.pitCodes[index] = code
+    state.pitCodes[key] = code
     setStatus('验证码已获取', `栏位 ${index + 1}: ${code}`)
   } catch (error) {
     setStatus('验证码获取失败', String(error))
   } finally {
-    delete state.loadingCodes[index]
-    renderPits()
+    delete state.loadingCodes[key]
+    renderAccounts()
   }
 }
 
@@ -681,6 +827,9 @@ function clearInputs() {
   state.pits = []
   state.pitCodes = {}
   state.accountLeases = {}
+  state.accountPits = {}
+  state.accountMembers = {}
+  state.expandedAccount = ''
   state.captchaId = ''
   state.captchaLength = 0
   state.openCaptcha = false
@@ -733,9 +882,9 @@ els.saveButton.addEventListener('click', async () => {
 
 els.refreshPitButton.addEventListener('click', async () => {
   try {
-    await fetchPits()
+    await refreshAllAccountPits()
   } catch (error) {
-    setStatus('pit 获取失败', String(error))
+    setStatus('批量刷新失败', String(error))
   }
 })
 
@@ -759,6 +908,13 @@ els.exportButton.addEventListener('click', async () => {
   }
 })
 
+els.filterUniqueButton.addEventListener('click', () => {
+  state.showUniquePits = true
+  renderAccounts()
+  const uniqueCount = uniquePitAccounts().length
+  setStatus('已筛选重复栏位账号', uniqueCount ? `去重后 ${uniqueCount} 个栏位账号。` : '暂无可筛选的栏位账号。')
+})
+
 els.rentChatgptButton.addEventListener('click', async () => {
   await rentChatgpt()
 })
@@ -767,15 +923,58 @@ els.accountList.addEventListener('click', async (event) => {
   const target = event.target
   if (!(target instanceof HTMLElement)) return
 
-  const action = target.dataset.action
-  const account = target.dataset.account
-  if (!action || !account) return
+  const actionTarget = target.closest('[data-action]')
+  const card = target.closest('[data-account]')
+  const action = actionTarget?.dataset.action
+  const account = actionTarget?.dataset.account || card?.dataset.account
+
+  if (!action) return
+
+  if (action === 'copy-unique-pit') {
+    await copyText(actionTarget?.dataset.value, '栏位账号已复制')
+    return
+  }
+
+  if (action === 'hide-unique-pits') {
+    state.showUniquePits = false
+    renderAccounts()
+    setStatus('已收起筛选结果')
+    return
+  }
+
+  if (!account) return
 
   const record = state.accounts.find((item) => item.account === account)
+  const pitIndex = Number(actionTarget?.dataset.index)
+
+  if (action === 'toggle-pits') {
+    state.expandedAccount = state.expandedAccount === account ? '' : account
+    renderAccounts()
+    return
+  }
+
+  if (action === 'copy-account-pit') {
+    const pit = state.accountPits[account]?.[pitIndex]
+    await copyText(pit?.account, '栏位账号已复制')
+    return
+  }
+
+  if (action === 'copy-password-pit') {
+    const pit = state.accountPits[account]?.[pitIndex]
+    await copyText(pit?.password, '栏位密码已复制')
+    return
+  }
+
+  if (action === 'fetch-account-code') {
+    await fetchAccountPitCode(account, pitIndex)
+    return
+  }
+
   if (!record) return
 
   if (action === 'load') {
     state.selectedAccount = record.account
+    state.token = record.token || state.token
     state.usedAccounts.add(record.account)
     setLoginMode(record.login_type || 'password')
     renderAccounts()
@@ -783,6 +982,9 @@ els.accountList.addEventListener('click', async (event) => {
     if ((record.login_type || 'password') === 'phone') {
       els.phoneInput.value = record.account
       els.smsCodeInput.value = ''
+      if (record.token) {
+        await fetchMemberInfoForAccount(record.account, record.token)
+      }
       if (!state.captchaId) {
         await fetchPhoneCaptcha()
       }
@@ -818,41 +1020,11 @@ els.accountList.addEventListener('click', async (event) => {
   }
 })
 
-els.pitGrid.addEventListener('click', async (event) => {
-  const target = event.target
-  if (!(target instanceof HTMLElement)) return
-
-  const action = target.dataset.action
-  const type = target.dataset.pitCopy
-  const index = Number(target.dataset.index)
-  if (Number.isNaN(index)) return
-
-  if (action === 'fetch-code') {
-    await fetchCode(index)
-    return
-  }
-
-  const pit = state.pits[index]
-  if (!pit) return
-
-  if (type === 'account') {
-    await copyText(pit.account, 'pit 账号已复制')
-  }
-
-  if (type === 'password') {
-    await copyText(pit.password, 'pit 密码已复制')
-  }
-
-  if (type === 'code') {
-    await copyText(state.pitCodes[index], '验证码已复制')
-  }
-})
-
 setInterval(() => {
   if (state.accounts.length) {
     renderAccounts()
   }
-}, 60 * 1000)
+}, 1000)
 
 async function boot() {
   renderPits()
@@ -870,6 +1042,9 @@ async function boot() {
         els.passwordInput.value = current.password
       }
       state.token = current.token || ''
+      if (state.token) {
+        await fetchMemberInfoForAccount(current.account, state.token)
+      }
     }
     setStatus('准备完成', '支持密码登录、手机号登录、pit 和验证码获取。')
   } catch (error) {
