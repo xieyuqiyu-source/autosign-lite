@@ -346,8 +346,9 @@ function renderInlinePitSummary(account, pits) {
       <code class="max-w-[180px] cursor-pointer truncate rounded bg-warning/20 px-1.5 py-0.5 font-semibold text-warning-content" data-action="copy-account-pit" data-account="${escapeHtml(account)}" data-index="0">${escapeHtml(firstPit.account || '-')}</code>
       <code class="max-w-[180px] cursor-pointer truncate rounded bg-info/15 px-1.5 py-0.5 font-semibold text-info-content" data-action="copy-password-pit" data-account="${escapeHtml(account)}" data-index="0">${escapeHtml(firstPit.password || '-')}</code>
       <button class="btn btn-ghost btn-xs h-5 min-h-5 shrink-0 px-1.5" data-action="fetch-account-code" data-account="${escapeHtml(account)}" data-index="0" ${available ? '' : 'disabled'}>
-        ${loading ? '<span class="loading loading-spinner loading-xs"></span>获取中' : (firstCode ? `验证码：${escapeHtml(firstCode)}` : '验证码')}
+        ${loading ? '<span class="loading loading-spinner loading-xs"></span>获取中' : '获取验证码'}
       </button>
+      ${firstCode ? `<code class="max-w-[120px] cursor-pointer truncate rounded bg-success/20 px-1.5 py-0.5 font-semibold text-success" data-action="copy-pit-code" data-account="${escapeHtml(account)}" data-index="0">${escapeHtml(firstCode)}</code>` : ''}
     </span>
   `
 }
@@ -362,13 +363,14 @@ function renderAccountPitDetails(account, pits, expanded) {
       const loading = Boolean(state.loadingCodes[key])
       const available = Boolean(pit.account && pit.seat_id)
       return `
-        <div class="grid grid-cols-[90px_minmax(0,1fr)_minmax(0,1fr)_74px] items-center gap-2 rounded-box bg-base-100 px-2 py-2 text-xs">
+        <div class="grid grid-cols-[90px_minmax(0,1fr)_minmax(0,1fr)_88px_minmax(0,92px)] items-center gap-2 rounded-box bg-base-100 px-2 py-2 text-xs">
           <span class="badge badge-outline badge-sm">${escapeHtml(pit.name || pit.title || pitTitle(pit.pit))}</span>
           <code class="cursor-pointer truncate rounded bg-base-200 px-2 py-1" data-action="copy-account-pit" data-account="${escapeHtml(account)}" data-index="${index}">${escapeHtml(pit.account || '-')}</code>
           <code class="cursor-pointer truncate rounded bg-base-200 px-2 py-1" data-action="copy-password-pit" data-account="${escapeHtml(account)}" data-index="${index}">${escapeHtml(pit.password || '-')}</code>
           <button class="btn btn-xs btn-outline" data-action="fetch-account-code" data-account="${escapeHtml(account)}" data-index="${index}" data-no-expand="true" ${available ? '' : 'disabled'}>
-            ${loading ? '<span class="loading loading-spinner loading-xs"></span>获取中' : (code ? escapeHtml(code) : '验证码')}
+            ${loading ? '<span class="loading loading-spinner loading-xs"></span>获取中' : '获取验证码'}
           </button>
+          <code class="cursor-pointer truncate rounded bg-success/20 px-2 py-1 font-semibold text-success ${code ? '' : 'opacity-40'}" data-action="copy-pit-code" data-account="${escapeHtml(account)}" data-index="${index}">${escapeHtml(code || '验证码')}</code>
         </div>
       `
     })
@@ -803,7 +805,8 @@ async function fetchAccountPitCode(account, index) {
       busSeatId: pit.seat_id,
     })
     state.pitCodes[key] = code
-    setStatus('验证码已获取', `栏位 ${index + 1}: ${code}`)
+    await copyText(code, `验证码已获取并复制`, )
+    setStatus('验证码已获取并复制', `栏位 ${index + 1}: ${code}`)
   } catch (error) {
     setStatus('验证码获取失败', String(error))
   } finally {
@@ -962,6 +965,12 @@ els.accountList.addEventListener('click', async (event) => {
   if (action === 'copy-password-pit') {
     const pit = state.accountPits[account]?.[pitIndex]
     await copyText(pit?.password, '栏位密码已复制')
+    return
+  }
+
+  if (action === 'copy-pit-code') {
+    const code = state.pitCodes[`${account}:${pitIndex}`]
+    await copyText(code, '验证码已复制')
     return
   }
 
